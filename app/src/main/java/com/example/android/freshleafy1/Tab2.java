@@ -25,22 +25,6 @@ public class Tab2 extends Fragment {
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.tab2, container, false);
 
-        list = new ArrayList<String>();
-        list.add("1");
-        list.add("2");
-        list.add("3");
-        list.add("4");
-        list.add("5");
-        list.add("6");
-        list.add("7");
-        list.add("8");
-        list.add("9");
-        list.add("10");
-
-        lv2 = (ListView)rootView.findViewById(R.id.lv2);
-        adapter = new ArrayAdapter(getActivity(), inflater_layout,R.id.tp,list);
-        lv2.setAdapter(adapter);
-
         return rootView;
     }
 

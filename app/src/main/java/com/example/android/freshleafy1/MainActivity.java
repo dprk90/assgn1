@@ -1,5 +1,13 @@
 package com.example.android.freshleafy1;
 
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.database.sqlite.SQLiteDatabase;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
@@ -16,31 +24,39 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.example.android.freshleafy1.Database.OrderContract;
+import com.example.android.freshleafy1.Database.OrderDbHelper;
+
+import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener,
-        LoaderManager.LoaderCallbacks<List<AnItem>> {
 
-    /**
-     * The {@link android.support.v4.view.PagerAdapter} that will provide
-     * fragments for each of the sections. We use a
-     * {@link FragmentPagerAdapter} derivative, which will keep every
-     * loaded fragment in memory. If this becomes too memory intensive, it
-     * may be best to switch to a
-     * {@link android.support.v4.app.FragmentStatePagerAdapter}.
-     */
+
+import static android.app.PendingIntent.getActivity;
+
+public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener,
+        LoaderManager.LoaderCallbacks<ArrayList<AnItem>> {
 
     private SectionsPagerAdapter mSectionsPagerAdapter;
     private ViewPager mViewPager;
-    TextView test ;
-
+    ListView lv1,lv2,mDrawerList ;
+    ArrayList<DisplayItem> list1,list2 ;
+    MyListAdapter adapter1,adapter2 ;
+    OrderDbHelper mydb ;
+    SQLiteDatabase db ;
 
 
     @Override
@@ -48,10 +64,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        ConnectivityManager cm = (ConnectivityManager)this.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+        boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        // Create the adapter that will return a fragment for each of the three
-        // primary sections of the activity.
+
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
 
         // Set up the ViewPager with the sections adapter.
@@ -62,8 +81,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         tabLayout.setupWithViewPager(mViewPager);
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawer.setDrawerListener(toggle);
         toggle.syncState();
 
@@ -74,14 +92,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+                Intent i = new Intent(MainActivity.this,PlaceOrderActivity.class);
+                startActivity(i);
             }
         });
 
-        /////////////////////////////////////////
-        getSupportLoaderManager().initLoader(1,null,this).forceLoad();
-
+        if (isConnected)
+            getSupportLoaderManager().initLoader(1,null,this).forceLoad();
+        else{
+            Toast.makeText(this, "No Internet Connection !",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override
@@ -96,19 +117,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
+
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
             return true;
         }
@@ -119,16 +136,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
-        // Handle navigation view item clicks here.
         int id = item.getItemId();
 
-        if (id == R.id.nav_camera) {
-            // Handle the camera action
+        if (id == R.id.nav_activity_1) {
+            startActivity(new Intent(getApplicationContext(),Activity_1.class));
 
-        } else if (id == R.id.nav_share) {
-
-        } else if (id == R.id.nav_send) {
-
+        } else if (id == R.id.nav_activity_2) {
+            startActivity(new Intent(getApplicationContext(),Activity_2.class));
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -137,38 +151,53 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     @Override
-    public Loader<List<AnItem>> onCreateLoader(int id, Bundle args) {
-        return new ItemLoader(MainActivity.this);
+    public Loader<ArrayList<AnItem>> onCreateLoader(int id, Bundle args) {
+        return new ItemLoader(MainActivity.this) ;
     }
 
     @Override
-    public void onLoadFinished(Loader<List<AnItem>> loader, List<AnItem> data) {
-        test = (TextView)findViewById(R.id.test);
-        AnItem at = data.get(0);
-        test.setText(at.getName());
+    public void onLoadFinished(Loader<ArrayList<AnItem>> loader, ArrayList<AnItem> data) {
+
+        mydb = new OrderDbHelper(this);
+        db = mydb.getWritableDatabase();
+        db.delete(OrderContract.OrderEntry.TABLE_NAME, null, null);
+
+        lv1 = (ListView)findViewById(R.id.list1);
+        lv2 = (ListView)findViewById(R.id.list2);
+        list1 = new ArrayList<DisplayItem>();
+        list2 = new ArrayList<DisplayItem>();
+        for (int i=0;i<data.size();++i)
+        {
+
+            AnItem item = data.get(i);
+            mydb.insertItem(db,item.getName(),item.getPrice(),item.getCat_id(),item.getItem_id());
+            byte[] decodeString = Base64.decode(item.getImage(),Base64.DEFAULT);
+            Bitmap decoded = BitmapFactory.decodeByteArray(decodeString,0,decodeString.length);
+            if (item.getCat_id()==1)
+                list1.add(new DisplayItem(item.getNameHindi(),item.getName(),decoded,item.getPrice(),item.getCat_id(),item.getItem_id()));
+            else
+                list2.add(new DisplayItem(item.getNameHindi(),item.getName(),decoded,item.getPrice(),item.getCat_id(),item.getItem_id()));
+        }
+        adapter1 = new MyListAdapter(this,list1);
+        adapter2 = new MyListAdapter(this,list2);
+
+        lv1.setAdapter(adapter1);
+        lv2.setAdapter(adapter2);
     }
 
     @Override
-    public void onLoaderReset(Loader<List<AnItem>> loader) {
+    public void onLoaderReset(Loader<ArrayList<AnItem>> loader) {
 
     }
-
 
 
     public static class PlaceholderFragment extends Fragment {
-        /**
-         * The fragment argument representing the section number for this
-         * fragment.
-         */
+
         private static final String ARG_SECTION_NUMBER = "section_number";
 
         public PlaceholderFragment() {
         }
 
-        /**
-         * Returns a new instance of this fragment for the given section
-         * number.
-         */
         public static PlaceholderFragment newInstance(int sectionNumber) {
             PlaceholderFragment fragment = new PlaceholderFragment();
             Bundle args = new Bundle();
@@ -187,10 +216,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
-    /**
-     * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
-     * one of the sections/tabs/pages.
-     */
     public class SectionsPagerAdapter extends FragmentPagerAdapter {
 
         public SectionsPagerAdapter(FragmentManager fm) {
@@ -214,7 +239,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         @Override
         public int getCount() {
-            // Show 3 total pages.
+            // Show 2 total pages.
             return 2;
         }
 
@@ -229,4 +254,5 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return null;
         }
     }
+
 }

@@ -7,14 +7,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-public class ItemLoader extends AsyncTaskLoader<List<AnItem>> {
+public class ItemLoader extends AsyncTaskLoader<ArrayList<AnItem>> {
     public ItemLoader(Context context) {
         super(context);
     }
 
     @Override
-    public List<AnItem> loadInBackground() {
-        ArrayList<AnItem> list = Utils.fetchEarthquakeData("http://ec2-54-212-231-194.us-west-2.compute.amazonaws.com/internGetQuery");
+    public ArrayList<AnItem> loadInBackground() {
+        ArrayList<AnItem> list = Utils.fetchData("http://ec2-54-212-231-194.us-west-2.compute.amazonaws.com/internGetQuery");
         return list ;
     }
 }

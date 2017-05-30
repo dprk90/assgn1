@@ -2,30 +2,39 @@ package com.example.android.freshleafy1;
 
 
 import android.app.Activity;
+import android.content.ContentValues;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.util.Base64;
+import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.example.android.freshleafy1.Database.OrderDbHelper;
+
 import java.util.ArrayList;
+import java.util.List;
 
-public class MyListAdapter extends ArrayAdapter<String>
+public class MyListAdapter extends ArrayAdapter<DisplayItem>
 {
-
     private final Activity context ;
-    private final ArrayList<AnItem> list ;
+    private final ArrayList<DisplayItem> list ;
 
-    Cursor res ;
+    OrderDbHelper mydb ;
+    SQLiteDatabase db ;
 
-
-    public MyListAdapter(Activity context, ArrayList<AnItem> list )
+    public MyListAdapter(Activity context, ArrayList<DisplayItem> list )
     {
-        super(context,R.layout.inflater_layout);
+        super(context,0,list);
         this.context = context;
         this.list = list ;
     }
@@ -36,64 +45,56 @@ public class MyListAdapter extends ArrayAdapter<String>
 
         LayoutInflater inflater = context.getLayoutInflater();
         View rowView = inflater.inflate(R.layout.inflater_layout,null,true);
-        AnItem item = list.get(position);
+        final DisplayItem item = list.get(position);
 
         TextView txtTitle = (TextView) rowView.findViewById(R.id.nameEng);
         txtTitle.setText(item.getName());
 
+        TextView hinName = (TextView)rowView.findViewById(R.id.nameHindi);
+        hinName.setText(item.getNameHindi());
+
         TextView price = (TextView) rowView.findViewById(R.id.price);
-        price.setText("Rs. "+ item.getPrice());
+        price.setText("₹ "+ item.getPrice());
 
-//        final TextView q = (TextView)rowView.findViewById(R.id.q) ;
-//        q.setText(Integer.toString(quantity[position]));
+        ImageView icon = (ImageView)rowView.findViewById(R.id.image);
+        icon.setImageBitmap(item.getImage());
 
-//        Button b1 = (Button)rowView.findViewById(R.id.b1);
-//        Button b2 = (Button)rowView.findViewById(R.id.b2);
-//
-//        res = myDb.getAllData();
-//
-//
-//
-//        b1.setOnClickListener(new View.OnClickListener(){
-//            @Override
-//            public void onClick(View view) {
-//                if(quantity[position]>0)
-//                {
-//                    --quantity[position] ;
-//                }
-//                q.setText(Integer.toString(quantity[position]));
-//                int c = 0;
-//
-//                res.moveToFirst();
-//                while(res.moveToNext())
-//                {
-//                    if(res.getString(1).equals(progNames[position]))
-//                    {
-//                        boolean up = myDb.updateData(Integer.toString(2+c),progNames[position],  prices[position], quantity[position]);
-//                    }
-//                    ++c ;
-//                }
-//
-//            }
-//        });
-//        b2.setOnClickListener(new View.OnClickListener(){
-//            @Override
-//            public void onClick(View view) {
-//                ++quantity[position] ;
-//                q.setText(Integer.toString(quantity[position]));
-//                res.moveToFirst();
-//                int c = 0 ;
-//                while(res.moveToNext() && c<100)
-//                {
-//                    if(res.getString(1).equals(progNames[position]))
-//                    {
-//                        boolean up = myDb.updateData(Integer.toString(c+2),progNames[position],  prices[position], quantity[position]);
-//                    }
-//                    ++c ;
-//                }
-//
-//            }
-//        });
+        Button b1 = (Button)rowView.findViewById(R.id.minus);
+        Button b2 = (Button)rowView.findViewById(R.id.plus);
+
+        mydb = new OrderDbHelper(getContext());
+        db = mydb.getWritableDatabase();
+
+        final TextView qty = (TextView)rowView.findViewById(R.id.qty);
+        int quantity = mydb.getQuantity(db,item.getItem_id()) ;
+        qty.setText(""+quantity);
+
+        final TextView qxp = (TextView)rowView.findViewById(R.id.qXp);
+        qxp.setText(item.getPrice()+" X "+quantity);
+
+        b1.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view) {
+                int c = mydb.getQuantity(db,item.getItem_id());
+                if (c>0)
+                    --c;
+                mydb.updateData(db,item.getItem_id(),c);
+                qty.setText(""+c);
+                qxp.setText(item.getPrice()+" X "+c);
+            }
+        });
+
+        b2.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view) {
+                int c = mydb.getQuantity(db,item.getItem_id());
+                ++c ;
+                mydb.updateData(db,item.getItem_id(),c);
+                qty.setText(""+c);
+                qxp.setText(item.getPrice()+" X "+c);
+            }
+        });
+
         return rowView ;
     }
 }
